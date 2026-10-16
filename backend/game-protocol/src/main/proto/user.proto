@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package ballsgame.persistence;
+//这个文件编译生成的类的包路径 都会放在这个包下
+option java_package = "com.h.gameprotocol.persistence";
+option java_multiple_files = true;
+
+// Login 账号的持久化实体，序列化后写入 game_account.data。
+// 仅用于服务端数据库存储，包含密码哈希，禁止当作客户端响应或公开玩家信息发送。
+// Protobuf 序列化不是加密；password 始终存 BCrypt 哈希而非明文。
+message UserProto {
+  string user_id = 1;        // 注册账号，同时是字符串用户 ID，与数据库主键保持一致。
+  string password = 2;       // 完整 BCrypt 哈希，沿用用户原账号表中的 password 字段名。
+  uint32 disabled = 3;       // 0 允许登录，1 禁止登录；其他值由存取层拒绝。
+  int64 last_login_time = 4; // 最近成功登录的 Unix 毫秒时间戳；0 表示尚未成功登录。
+  int64 create_time = 5;     // 创建账号记录的 Unix 毫秒时间戳；由创建流程设置。
+}

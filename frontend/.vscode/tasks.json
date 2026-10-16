@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "启动球球 Web 客户端", "type": "npm", "script": "dev", "isBackground": true,
+      "problemMatcher": [], "presentation": { "reveal": "always", "panel": "dedicated" },
+      "runOptions": { "runOn": "default" } },
+    { "label": "构建客户端", "type": "npm", "script": "build", "problemMatcher": "$tsc", "group": "build" }
+  ]
+}

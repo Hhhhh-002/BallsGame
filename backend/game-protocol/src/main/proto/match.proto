@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package ballsgame.persistence;
+option java_package = "com.h.gameprotocol.persistence";
+option java_multiple_files = true;
+
+// 服务端数据库实体，不改变客户端消息协议。
+// 写入 data 使用 toByteArray()；读取使用 parseFrom(data)。字段编号发布后不能复用。
+
+// game_match.data：一场比赛的信息和完整最终排名。
+message MatchProto {
+  string match_id = 1;          // 与数据库主键一致：Scene 实例 ID + ':' + 无符号 Scene ID。
+  int64 start_time = 2;         // 开赛时间，Unix 毫秒。
+  int64 end_time = 3;           // 实际结束时间，Unix 毫秒；进行中为 0。
+  uint32 final_player_count = 4;// 结束瞬间仍在场的人数，等于 players 的数量。
+  repeated MatchPlayerProto players = 5; // 最终排名顺序；提前离场的玩家不在此列表。
+  EndReason end_reason = 6;
+
+  enum EndReason {
+    NOT_ENDED = 0; // 尚未结束，不允许作为最终战绩返回。
+    TIME_LIMIT = 1;
+    ALL_LEFT = 2;
+  }
+}
+
+// 一名结束时仍在场的玩家在该局的结果；不是用户全局资料。
+message MatchPlayerProto {
+  string user_id = 1;
+  string nickname = 2;       // 本局使用的昵称，保存后固定。
+  uint32 rank = 3;           // 名次，正数；沿用服务端排名规则。
+  double area = 4;           // 服务端计算的最终总面积，有限且非负。
+}
+
+// game_match_result.data：一个用户的一局战绩，便于按用户主键范围查询。
+// 同一局的时间和人数来自同一份最终 MatchProto，不由客户端提供。
+message MatchResultProto {
+  string user_id = 1;
+  string match_id = 2;       // 对应 MatchProto.match_id，不是请求编号。
+  string nickname = 3;      // 本局使用的昵称，不读取用户当前昵称来代替历史昵称。
+  uint32 rank = 4;
+  uint32 final_player_count = 5;
+  int64 start_time = 6;      // Unix 毫秒。
+  int64 end_time = 7;        // Unix 毫秒，个人战绩仅在比赛已结束后写入。
+  double area = 8;
+}

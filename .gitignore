@@ -1,0 +1,25 @@
+# 仓库级兜底忽略（backend/ 与 frontend/ 各自还有独立 .gitignore）
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*.log
+
+# 构建产物
+target/
+build/
+dist/
+node_modules/
+
+# 环境与本地文件
+.env.local
+.env.*.local
+.local-preview/
+.sites-runtime/
+
+# 系统与日志
+*.log
+.DS_Store
+Thumbs.db

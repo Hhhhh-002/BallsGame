@@ -1,0 +1,61 @@
+logging.level.com.h.gameprotocol.codec.CommandReceiveLog: INFO # 逐条打印收到的指令，不打印 body。
+spring:
+  application:
+    name: agentmgr-server
+  profiles:
+    active: "${SPRING_PROFILES_ACTIVE:prod}"
+  config:
+    import:
+      # 全局 Redis 配置必须存在；服务专属配置可以不存在。
+      - "nacos:global-${spring.profiles.active}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:agentmgr-server-${spring.profiles.active}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+  cloud:
+    nacos:
+      config:
+        server-addr: "${NACOS_SERVER_ADDR:${NACOS_ADDRESS:127.0.0.1:8848}}"
+        username: "${NACOS_USERNAME:nacos}"
+        password: "${NACOS_PASSWORD:nacos}"
+        namespace: "${NACOS_NAMESPACE:eb7842a8-9b4e-4add-8516-83d7f1d01ee1}"
+      discovery:
+        server-addr: "${spring.cloud.nacos.config.server-addr}"
+        username: "${spring.cloud.nacos.config.username}"
+        password: "${spring.cloud.nacos.config.password}"
+        namespace: "${spring.cloud.nacos.config.namespace}"
+        group: "${NACOS_SERVICE_GROUP:DEFAULT_GROUP}"
+        metadata:
+          instanceid: "${AGENTMGR_INSTANCE_ID:agentmgr01}"
+    # 重试统一由业务 RPC 封装执行，禁止 LoadBalancer/Feign 隐式重试叠加或切换实例。
+    loadbalancer:
+      retry:
+        enabled: false
+  data:
+    # Redis 连接由 Starter 自动配置；StringRedisTemplate 和 Redisson 锁使用同一份连接参数。
+    # host、port、password、database、timeout 直接读取 Nacos 的 spring.data.redis。
+    redis:
+      connect-timeout: 2s
+      # 当前不使用 Spring Data Repository，请求去重读写直接使用 StringRedisTemplate。
+      repositories:
+        enabled: false
+
+# 按单实例仲裁部署，在线集合放内存；本次不实现重启恢复或多管理器共享在线状态。
+server:
+  port: ${AGENTMGR_HTTP_PORT:8082}
+
+agentmgr:
+  # PROCESSING 请求不设 TTL；DONE 按下方保留时间过期。在线集合不写 Redis。
+  redis-key-prefix: "balls:agentmgr:"
+  lock-wait-ms: 200
+  operation-timeout-ms: 90000
+  result-wait-ms: 80000
+  worker-threads: 16
+  worker-queue: 512
+  same-host-multiplier: 3
+  # 已完成请求结果的保留时间，单位毫秒；不保存阶段日志。
+  idempotency-result-ttl-ms: 600000
+
+  # 每个固定目标 RPC 的有限尝试；成功回包后校验业务 body，不接受“处理中”。
+  rpc-connect-timeout-ms: 1000
+  rpc-read-timeout-ms: 8000
+  rpc-max-attempts: 3
+  initial-backoff-ms: 200
+  max-backoff-ms: 2000

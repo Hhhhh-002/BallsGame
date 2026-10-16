@@ -1,0 +1,480 @@
+{
+  "sourceHash": "de7ddad110ed0229fc110545edea175dc9a568abfc0e23d2c112a12e909790a6",
+  "commands": {
+    "LOGIN": 1001,
+    "REGISTER": 1002,
+    "MATCH_HISTORY": 1003,
+    "MOVE": 2001,
+    "SPLIT": 2002,
+    "EJECT": 2003,
+    "SHIFT": 2004,
+    "LEAVE": 2005,
+    "START_GAME": 2006,
+    "KICKED_OFFLINE": 3001,
+    "SCENE_SNAPSHOT": 3002,
+    "PLAYER_ENTERED": 3003,
+    "FOOD_ADDED": 3004,
+    "FOOD_EATEN": 3005,
+    "PLAYER_LEFT": 3006,
+    "BALL_CHANGED": 3007,
+    "MATCH_RANKING": 3008,
+    "MATCH_ENDED": 3009
+  },
+  "schema": {
+    "nested": {
+      "ballsgame": {
+        "nested": {
+          "ClientEnvelope": {
+            "fields": {
+              "cmd": {
+                "type": "uint32",
+                "id": 1
+              },
+              "requestId": {
+                "type": "uint64",
+                "id": 2,
+                "protoName": "request_id"
+              },
+              "body": {
+                "type": "bytes",
+                "id": 3
+              },
+              "clientSequence": {
+                "type": "uint64",
+                "id": 4,
+                "protoName": "client_sequence"
+              }
+            }
+          },
+          "ServerEnvelope": {
+            "fields": {
+              "cmd": {
+                "type": "uint32",
+                "id": 1
+              },
+              "requestId": {
+                "type": "uint64",
+                "id": 2,
+                "protoName": "request_id"
+              },
+              "code": {
+                "type": "int32",
+                "id": 3
+              },
+              "message": {
+                "type": "string",
+                "id": 4
+              },
+              "body": {
+                "type": "bytes",
+                "id": 5
+              }
+            }
+          },
+          "LoginRequest": {
+            "fields": {
+              "account": {
+                "type": "string",
+                "id": 1
+              },
+              "password": {
+                "type": "string",
+                "id": 2
+              }
+            }
+          },
+          "LoginResponse": {
+            "fields": {
+              "userId": {
+                "type": "string",
+                "id": 1,
+                "protoName": "user_id"
+              },
+              "player": {
+                "type": "PlayerPublicInfo",
+                "id": 2
+              }
+            }
+          },
+          "PlayerPublicInfo": {
+            "fields": {
+              "nickname": {
+                "type": "string",
+                "id": 1
+              }
+            }
+          },
+          "RegisterRequest": {
+            "fields": {
+              "account": {
+                "type": "string",
+                "id": 1
+              },
+              "password": {
+                "type": "string",
+                "id": 2
+              }
+            }
+          },
+          "RegisterResponse": {
+            "fields": {
+              "userId": {
+                "type": "string",
+                "id": 1,
+                "protoName": "user_id"
+              }
+            }
+          },
+          "ShiftRequest": {
+            "fields": {
+              "directionX": {
+                "type": "float",
+                "id": 1,
+                "protoName": "direction_x"
+              },
+              "directionY": {
+                "type": "float",
+                "id": 2,
+                "protoName": "direction_y"
+              }
+            }
+          },
+          "SplitRequest": {
+            "fields": {
+              "directionX": {
+                "type": "float",
+                "id": 1,
+                "protoName": "direction_x"
+              },
+              "directionY": {
+                "type": "float",
+                "id": 2,
+                "protoName": "direction_y"
+              }
+            }
+          },
+          "EjectRequest": {
+            "fields": {
+              "directionX": {
+                "type": "float",
+                "id": 1,
+                "protoName": "direction_x"
+              },
+              "directionY": {
+                "type": "float",
+                "id": 2,
+                "protoName": "direction_y"
+              }
+            }
+          },
+          "StartGameRequest": {
+            "fields": {
+              "nickname": {
+                "type": "string",
+                "id": 1
+              }
+            }
+          },
+          "StartGameResponse": {
+            "fields": {
+              "sceneId": {
+                "type": "uint64",
+                "id": 1,
+                "protoName": "scene_id"
+              }
+            }
+          },
+          "LeaveRequest": {
+            "fields": {}
+          },
+          "PlayerPosition": {
+            "fields": {
+              "userId": {
+                "type": "string",
+                "id": 1,
+                "protoName": "user_id"
+              },
+              "x": {
+                "type": "float",
+                "id": 2
+              },
+              "y": {
+                "type": "float",
+                "id": 3
+              },
+              "ballId": {
+                "type": "uint64",
+                "id": 4,
+                "protoName": "ball_id"
+              },
+              "radius": {
+                "type": "float",
+                "id": 5
+              }
+            }
+          },
+          "MoveBroadcast": {
+            "fields": {
+              "serverTick": {
+                "type": "uint64",
+                "id": 1,
+                "protoName": "server_tick"
+              },
+              "players": {
+                "rule": "repeated",
+                "type": "PlayerPosition",
+                "id": 2
+              }
+            }
+          },
+          "BallState": {
+            "fields": {
+              "ballId": {
+                "type": "uint64",
+                "id": 1,
+                "protoName": "ball_id"
+              },
+              "userId": {
+                "type": "string",
+                "id": 2,
+                "protoName": "user_id"
+              },
+              "x": {
+                "type": "float",
+                "id": 3
+              },
+              "y": {
+                "type": "float",
+                "id": 4
+              },
+              "radius": {
+                "type": "float",
+                "id": 5
+              },
+              "nickname": {
+                "type": "string",
+                "id": 6
+              }
+            }
+          },
+          "FoodState": {
+            "fields": {
+              "foodId": {
+                "type": "uint64",
+                "id": 1,
+                "protoName": "food_id"
+              },
+              "x": {
+                "type": "float",
+                "id": 2
+              },
+              "y": {
+                "type": "float",
+                "id": 3
+              }
+            }
+          },
+          "SceneSnapshot": {
+            "fields": {
+              "sceneId": {
+                "type": "uint64",
+                "id": 1,
+                "protoName": "scene_id"
+              },
+              "serverTick": {
+                "type": "uint64",
+                "id": 2,
+                "protoName": "server_tick"
+              },
+              "balls": {
+                "rule": "repeated",
+                "type": "BallState",
+                "id": 3
+              },
+              "foods": {
+                "rule": "repeated",
+                "type": "FoodState",
+                "id": 4
+              },
+              "width": {
+                "type": "float",
+                "id": 5
+              },
+              "height": {
+                "type": "float",
+                "id": 6
+              },
+              "tickRate": {
+                "type": "uint32",
+                "id": 7,
+                "protoName": "tick_rate"
+              },
+              "started": {
+                "type": "bool",
+                "id": 8
+              },
+              "minPlayersToStart": {
+                "type": "uint32",
+                "id": 9,
+                "protoName": "min_players_to_start"
+              },
+              "playerCount": {
+                "type": "uint32",
+                "id": 10,
+                "protoName": "player_count"
+              }
+            }
+          },
+          "PlayerEnteredEvent": {
+            "fields": {
+              "balls": {
+                "rule": "repeated",
+                "type": "BallState",
+                "id": 1
+              }
+            }
+          },
+          "FoodAddedEvent": {
+            "fields": {
+              "foods": {
+                "rule": "repeated",
+                "type": "FoodState",
+                "id": 1
+              }
+            }
+          },
+          "FoodEatenEvent": {
+            "fields": {
+              "ballId": {
+                "type": "uint64",
+                "id": 1,
+                "protoName": "ball_id"
+              },
+              "foodId": {
+                "type": "uint64",
+                "id": 2,
+                "protoName": "food_id"
+              },
+              "radius": {
+                "type": "float",
+                "id": 3
+              }
+            }
+          },
+          "PlayerLeftEvent": {
+            "fields": {
+              "userId": {
+                "type": "string",
+                "id": 1,
+                "protoName": "user_id"
+              },
+              "ballIds": {
+                "rule": "repeated",
+                "type": "uint64",
+                "id": 2,
+                "protoName": "ball_ids"
+              }
+            }
+          },
+          "BallChangedEvent": {
+            "fields": {
+              "upserts": {
+                "rule": "repeated",
+                "type": "BallState",
+                "id": 1
+              },
+              "removedBallIds": {
+                "rule": "repeated",
+                "type": "uint64",
+                "id": 2,
+                "protoName": "removed_ball_ids"
+              }
+            }
+          },
+          "MatchRankingEntry": {
+            "fields": {
+              "userId": {
+                "type": "string",
+                "id": 1,
+                "protoName": "user_id"
+              },
+              "nickname": {
+                "type": "string",
+                "id": 2
+              },
+              "area": {
+                "type": "double",
+                "id": 3
+              },
+              "rank": {
+                "type": "uint32",
+                "id": 4
+              },
+              "left": {
+                "type": "bool",
+                "id": 5
+              }
+            }
+          },
+          "MatchRanking": {
+            "fields": {
+              "sceneId": {
+                "type": "uint64",
+                "id": 1,
+                "protoName": "scene_id"
+              },
+              "sceneInstanceId": {
+                "type": "string",
+                "id": 2,
+                "protoName": "scene_instance_id"
+              },
+              "serverTick": {
+                "type": "uint64",
+                "id": 3,
+                "protoName": "server_tick"
+              },
+              "players": {
+                "rule": "repeated",
+                "type": "MatchRankingEntry",
+                "id": 4
+              },
+              "frozen": {
+                "type": "bool",
+                "id": 5
+              },
+              "startedAtMs": {
+                "type": "int64",
+                "id": 6,
+                "protoName": "started_at_ms"
+              },
+              "endsAtMs": {
+                "type": "int64",
+                "id": 7,
+                "protoName": "ends_at_ms"
+              },
+              "endReason": {
+                "type": "EndReason",
+                "id": 8,
+                "protoName": "end_reason"
+              },
+              "endedAtMs": {
+                "type": "int64",
+                "id": 9,
+                "protoName": "ended_at_ms"
+              }
+            },
+            "nested": {
+              "EndReason": {
+                "values": {
+                  "NONE": 0,
+                  "TIME_LIMIT": 1,
+                  "ALL_LEFT": 2
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

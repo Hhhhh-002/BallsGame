@@ -1,0 +1,26 @@
+# 合并到 Nacos：Data ID=global-prod.yaml，Group=DEFAULT_GROUP，格式=YAML。
+# 不要覆盖原有 spring.datasource / spring.data.redis 等配置；一个配置中只能有一个 battle 根节点。
+# 动态更新：Nacos 发布后无需再次重启；此后新建的对局读取新规则，已创建的对局（含等待室）保留旧规则。
+# 首次部署 food-refresh-max-count 对应的新代码时，仍需重启 Scene；以后仅改这些配置无需重启。
+# 以下数值均为服务端代码默认值。地图坐标单位不是屏幕像素。
+battle:
+  max-players: 32 # 默认32人；范围2~64；一局同时在场的人数上限，包含仍在场的观战玩家。
+  min-players-to-start: 2 # 默认2人；范围2~max-players；达到人数才开始战斗和计时，之后不因离场暂停。
+  max-balls: 256 # 默认256个；范围max-players~256；一局所有玩家的球合计上限。
+  max-balls-per-player: 8 # 默认8个；范围1~16；单个玩家同时拥有的球数上限。
+  max-foods: 50 # 默认50个；范围0~512；一局同时在场的食物上限，随机刷新和玩家吐球共用此上限。
+  initial-foods: 50 # 通常默认50个（未配置时为min(50,max-foods)）；范围0~max-foods；每局创建时一次性随机铺好。
+  food-interval-ms: 10000 # 默认10000毫秒=10秒；范围40~3600000毫秒；按逻辑Tick向上取整，开赛后每隔多少模拟时间刷新一批，越小越快。
+  food-refresh-max-count: 5 # 默认5个；范围1~512；每批随机生成1~此值（包含上限），不足容量时只生成剩余数量，已满则不生成。
+  width: 100 # 默认100；范围20~1000；地图宽度，x坐标范围0~width，球圆心还会按半径限制在边界内。
+  height: 100 # 默认100；范围20~1000；地图高度，y坐标范围0~height，球圆心还会按半径限制在边界内。
+  move-speed: 10 # 默认10坐标单位/秒；范围大于0且不超过100；服务端决定速度，客户端方向不能放大速度。
+  tick-rate: 25 # 默认25Hz；范围1~100；战斗逻辑每秒更新次数，默认每Tick为40毫秒。
+  broadcast-rate: 5 # 默认5Hz；范围1~tick-rate且必须整除tick-rate；位置广播目标频率，不影响事件广播。
+  max-catch-up: 5 # 默认5次；范围1~10；每轮最多计算这些Tick，超额积压时间丢弃并告警，不是丢弃玩家消息。
+  max-scenes-per-instance: 128 # 默认128局；必须大于0；一个Scene进程允许同时保有的对局数量上限，不会预先创建128局。
+  empty-scene-idle-seconds: 60 # 默认60秒；空场景空闲多久可回收，目录每30秒检查一次；未提交最终榜的对局不会提前回收。
+  match-duration-seconds: 600 # 默认600秒=10分钟；范围10~86400秒；达到最低开赛人数才按实际经过时间计时。
+  ranking-interval-ms: 1000 # 默认1000毫秒=1秒；范围200~10000毫秒；实时排名写入及发布间隔，I/O不阻塞战斗邮箱。
+  max-ranking-participants: 256 # 默认256人；范围max-players~256；本局累计不同账号上限，包含已离场者，不等于同时在场人数。
+  ranking-retention-days: 7 # 默认7天；范围1~365天；Redis最终榜的保留时间，不是MySQL战绩保存期限；新值在服务重启后应用。

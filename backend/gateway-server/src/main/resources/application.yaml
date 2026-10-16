@@ -1,0 +1,70 @@
+server:
+  port: ${GATEWAY_HTTP_PORT:8080}
+
+# 接收指令逐条输出到控制台，不因 root 日志级别调整而隐藏。
+logging.level.com.h.gameprotocol.codec.CommandReceiveLog: INFO
+
+# Gateway 的 WebSocket 监听与内部 RPC 参数；Nacos 全局配置可以覆盖这些本地值。
+gateway:
+  rpc:
+    # 登录端到端预算：覆盖查库、踢旧连接、保存旧 Actor、创建新 Actor 和有限重试。
+    timeout-ms: 90000
+    max-attempts: 3
+    max-in-flight-per-channel: 32
+    feign-threads: 16
+    feign-queue-per-thread: 64
+  # 客户端断线后的 AgentMgr 最终结果调用；重试只用于临时失败，且不会阻塞 Netty EventLoop。
+  disconnect:
+    timeout-ms: 35000
+    max-attempts: 3
+    initial-backoff-ms: 200
+    max-backoff-ms: 2000
+    feign-threads: 8
+    feign-queue: 512
+
+spring:
+  application:
+    name: gateway-server
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:prod}
+
+  config:
+    # 读取全局配置；Gateway 不访问 MySQL / Redis，不需要相应客户端依赖。
+    import: "nacos:global-${spring.profiles.active}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+
+  cloud:
+    # Feign 是阻塞式 HTTP 调用；同时限制底层连接和读取等待时间。
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 1000
+            readTimeout: 3000
+          # AgentMgr 必须等 Agent 保存并下线后才返回，单独给它较长的读取超时。
+          agentmgr-server:
+            connectTimeout: 1000
+            readTimeout: 30000
+          login-server:
+            connectTimeout: 1000
+            readTimeout: 85000
+    loadbalancer:
+      retry:
+        enabled: false # 重试由 RPC 封装统一控制，不叠加隐式重试。
+    nacos:
+      discovery:
+        server-addr: ${spring.cloud.nacos.config.server-addr}
+        username: ${spring.cloud.nacos.config.username}
+        password: ${spring.cloud.nacos.config.password}
+        namespace: ${spring.cloud.nacos.config.namespace}
+        group: ${NACOS_SERVICE_GROUP:DEFAULT_GROUP}
+        metadata:
+          instanceid: ${GATEWAY_INSTANCE_ID:gateway01}
+          host-id: ${GAME_HOST_ID:} # 同一物理机器的 Gateway/Agent 配相同值；未配置时不增加同机权重。
+
+
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:${NACOS_ADDRESS:127.0.0.1:8848}}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
+        namespace: ${NACOS_NAMESPACE:eb7842a8-9b4e-4add-8516-83d7f1d01ee1}

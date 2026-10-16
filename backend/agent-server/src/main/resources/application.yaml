@@ -1,0 +1,54 @@
+logging.level.com.h.gameprotocol.codec.CommandReceiveLog: INFO # 逐条打印收到的指令，不打印 body。
+server:
+  port: ${AGENT_HTTP_PORT:8083} # AgentMgr 的 Feign 调用使用此 HTTP 端口。
+spring:
+  application:
+    name: agent-server
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:prod}
+  config:
+    import:
+      # Redis 连接参数从全局配置读取，不使用本地连接默认值。
+      - "nacos:global-${spring.profiles.active}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${spring.cloud.nacos.config.server-addr}
+        username: ${spring.cloud.nacos.config.username}
+        password: ${spring.cloud.nacos.config.password}
+        namespace: ${spring.cloud.nacos.config.namespace}
+        group: ${NACOS_SERVICE_GROUP:DEFAULT_GROUP}
+        metadata:
+          instanceid: ${AGENT_INSTANCE_ID:agent01} # 同时运行的实例必须唯一。
+          host-id: ${GAME_HOST_ID:} # 同机 Agent/Scene 使用同一个标识；不根据 loopback 地址猜同机。
+          # netty.<instanceid>.websocket.port 由 AgentConfiguration 根据实际监听端口登记。
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:${NACOS_ADDRESS:127.0.0.1:8848}}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
+        namespace: ${NACOS_NAMESPACE:eb7842a8-9b4e-4add-8516-83d7f1d01ee1}
+
+  mvc:
+    async:
+      request-timeout: 60000 # 创建/离场/保存完成后才返回最终结果。
+  data:
+    redis:
+      # host、port、password、database、timeout 由 Nacos 全局配置提供。
+      connect-timeout: 2s
+      repositories:
+        enabled: false
+agent:
+  websocket:
+    port: ${AGENT_WS_PORT:9101}
+    path: /internal/agent
+  actor-threads: 4
+  io-threads: 8 # Redis 去重读写，不使用 MySQL。
+  io-queue: 512
+  request-key-prefix: "balls:agent:requests:"
+  stopped-request-retention-seconds: 86400 # Actor 实际终止且停止结果存 Redis 后，游戏请求记录保留一天。
+  same-host-multiplier: 3  #优先本机优先
+  scene-rpc-timeout-ms: 5000 # 每次尝试；固定目标控制请求最多尝试三次。
+  scene-input-response-timeout-ms: 15000 # 分裂/吐球等待 Scene 真正响应的时限，不缓存“发送成功”。
+scene:
+  websocket:
+    path: /internal/scene

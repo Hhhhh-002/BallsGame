@@ -1,0 +1,67 @@
+name: ballsgame
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: ballsgame-mysql
+    # 容器退出时自动重启；手动 stop 后不再自动启动
+    restart: unless-stopped     
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: H002
+      MYSQL_DATABASE: ballsgame
+      MYSQL_USER: ballsgame
+      MYSQL_PASSWORD: H002
+    ports:
+      - "3307:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4
+    container_name: ballsgame-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "H002"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "H002", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  nacos:
+    image: nacos/nacos-server:v2.5.1
+    # "BallsGame" is the primary container name requested. MySQL and Redis run as companion containers.
+    container_name: BallsGame
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "true"
+      NACOS_AUTH_IDENTITY_KEY: serverIdentity
+      NACOS_AUTH_IDENTITY_VALUE: security
+      NACOS_AUTH_TOKEN: VGhpcyBpcyBhIGxvbmcgc2VjcmV0IGZvciBuYWNvcyBhdXRo
+    ports:
+      - "8848:8848" # Nacos console and HTTP API
+      - "9848:9848" # gRPC port for Nacos 2.x clients
+      - "9849:9849" # gRPC port for server-to-server communication
+    volumes:
+      - nacos-data:/home/nacos/data
+      - nacos-logs:/home/nacos/logs
+
+volumes:
+  mysql-data:
+  redis-data:
+  nacos-data:
+  nacos-logs:

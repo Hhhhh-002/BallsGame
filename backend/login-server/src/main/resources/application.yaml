@@ -1,0 +1,91 @@
+logging.level.com.h.gameprotocol.codec.CommandReceiveLog: INFO # 逐条打印收到的指令，不打印 body。
+spring:
+  application:
+    # 当前服务在 Nacos 注册的服务名，Gateway 的 Feign 按这个名字调用 Login。
+    name: login-server
+
+  profiles:
+    # 当前启用的环境；下面会加载 global-prod.yaml 和 login-server-prod.yaml。
+    active: ${SPRING_PROFILES_ACTIVE:prod}
+
+  config:
+    # 先导入全局配置，再导入 Login 专属配置。
+    # 同名配置项通常由后导入的 Login 专属配置覆盖。
+    # 全局配置提供 MySQL 连接，必须存在；Login 专属配置可以不存在。
+    # group：配置所在的 Nacos 配置组，不是服务发现的服务组。
+    # refreshEnabled：开启这些配置源的更新监听；具体 Bean 是否刷新取决于其实现。
+    import:
+      - "nacos:global-${spring.profiles.active}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:login-server-${spring.profiles.active}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+
+  cloud:
+    nacos:
+      discovery:
+        # 服务注册与发现使用的 Nacos 地址。
+        server-addr: ${spring.cloud.nacos.config.server-addr}
+
+        # Nacos 访问凭据；生产环境建议通过环境变量提供，不提交真实密码。
+        username: ${spring.cloud.nacos.config.username}
+        password: ${spring.cloud.nacos.config.password}
+
+        # 服务发现的命名空间 ID。
+        # Login、Gateway、AgentMgr 应使用相同的命名空间和服务组，才能互相发现。
+        namespace: ${spring.cloud.nacos.config.namespace}
+        group: ${NACOS_SERVICE_GROUP:DEFAULT_GROUP}
+        metadata:
+          instanceid: ${LOGIN_INSTANCE_ID:login01}
+
+      config:
+        # 配置中心使用的 Nacos 地址；与 discovery 分开配置。
+        server-addr: ${NACOS_SERVER_ADDR:${NACOS_ADDRESS:127.0.0.1:8848}}
+
+        # 读取 Nacos 配置时使用的访问凭据。
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
+
+        # global-prod.yaml、login-server-prod.yaml 所在的配置命名空间。
+        namespace: ${NACOS_NAMESPACE:eb7842a8-9b4e-4add-8516-83d7f1d01ee1}
+
+    openfeign:
+      client:
+        config:
+          # 只针对 name = "agentmgr-server" 的 Feign 客户端。
+          agentmgr-server:
+            # 建立 HTTP 连接的超时：1000 毫秒，即 1 秒。
+            connect-timeout: 1000
+
+            # 单次等待上限；实际 Feign Options 还会按端到端剩余期限缩短。
+            # AgentMgr 需要等待旧 Actor 离场停止及新 Actor 创建。
+            # 超时只代表 Login 未拿到结果，不会自动取消 AgentMgr 的业务操作。
+            read-timeout: 65000
+
+    loadbalancer:
+      retry:
+        # 关闭当前应用中 LoadBalancer 层的自动重试，不关闭负载均衡。
+        # 重试已放入 AgentMgrLoginRpcClient，复用业务操作 ID，不叠加底层重试。
+        # NEVER_RETRY 只关闭隐式重试，不关闭本模块实现的有限业务重试。
+        enabled: false
+
+  datasource:
+    # url、username、password、driver-class-name 全部由 Nacos 的 spring.datasource 提供。
+    # 这里只设置连接池，不再提供本地数据库地址或账号密码。
+    hikari:
+      maximum-pool-size: 8
+      connection-timeout: 2000
+
+mybatis-plus:
+  configuration:
+    default-statement-timeout: 3 # SQL 执行超时，单位秒。
+
+server:
+  # Login 接收 Gateway HTTP 请求的端口，不是客户端 WebSocket 端口。
+  # 同一台机器多开 Login 时，每个实例需要使用不同端口。
+  port: ${LOGIN_HTTP_PORT:8081}
+
+login:
+  rpc:
+    max-attempts: 3
+    initial-backoff-ms: 200
+    max-backoff-ms: 2000
+  password:
+    bcrypt-strength: 12

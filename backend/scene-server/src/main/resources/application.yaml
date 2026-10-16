@@ -1,0 +1,51 @@
+logging.level.com.h.gameprotocol.codec.CommandReceiveLog: INFO # 包括 SHIFT 等高频输入。
+server:
+  port: ${SCENE_HTTP_PORT:8084} # Nacos 注册的实例端口；战斗消息走下面的 WS 端口。
+spring:
+  application:
+    name: scene-server
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:prod}
+  config:
+    import:
+      # 全局 MySQL / Redis 配置必须存在；Scene 专属配置可以不存在。
+      - "nacos:global-${spring.profiles.active}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:scene-server-${spring.profiles.active}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${spring.cloud.nacos.config.server-addr}
+        username: ${spring.cloud.nacos.config.username}
+        password: ${spring.cloud.nacos.config.password}
+        namespace: ${spring.cloud.nacos.config.namespace}
+        group: ${NACOS_SERVICE_GROUP:DEFAULT_GROUP}
+        metadata:
+          instanceid: ${SCENE_INSTANCE_ID:scene01}
+          host-id: ${GAME_HOST_ID:}
+          scene-ws-port: ${SCENE_WS_PORT:9201}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:${NACOS_ADDRESS:127.0.0.1:8848}}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
+        namespace: ${NACOS_NAMESPACE:eb7842a8-9b4e-4add-8516-83d7f1d01ee1}
+  data:
+    redis:
+      # host、port、password、database、timeout 由 Nacos 的 spring.data.redis 提供。
+      connect-timeout: 2s
+      repositories:
+        enabled: false
+  # spring.datasource.* 直接读取 Nacos；所有 Scene 使用同一战绩库，不在本地重复填写。
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+scene:
+  websocket:
+    port: ${SCENE_WS_PORT:9201}
+    path: /internal/scene
+  actor-threads: 4
+  ranking-threads: 2
+  ranking-queue: 128
+  ranking-key-prefix: "balls:match:"
+  request-key-prefix: "balls:scene:requests:" # 比赛＋玩家会话隔离，Hash field 是原客户端 requestId。
+  left-request-retention-seconds: 86400 # 离场后保留一天；在场请求不自动过期。
+# battle.* 不放在此处重复定义：从 Nacos global-prod.yaml 读取，缺失时使用 BattleRules 的安全默认值。
