@@ -7,10 +7,15 @@ import protobuf from 'protobufjs';
 // 只读后端源码；生成物全部留在独立客户端。以后协议变化运行 npm run protocol:sync 即可。
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const backendArg = process.argv.indexOf('--backend');
-const backend = resolve(backendArg < 0 ? 'D:/IdeaProjects/BallsGame' : process.argv[backendArg + 1]);
-const game = await readFile(resolve(backend, 'game-protocol/src/main/proto/game.proto'), 'utf8');
-const leave = await readFile(resolve(backend, 'game-protocol/src/main/proto/leave.proto'), 'utf8');
-const commandsSource = await readFile(resolve(backend, 'game-common/src/main/java/com/h/gamecommon/command/GameCommands.java'), 'utf8');
+if (backendArg >= 0 && (!process.argv[backendArg + 1] || process.argv[backendArg + 1].startsWith('--'))) {
+  throw new Error('--backend 后必须提供后端源码目录');
+}
+const backend = backendArg < 0 ? resolve(project, '../backend') : resolve(process.argv[backendArg + 1]);
+// Git 在 Windows 上可能检出 CRLF；换行差异不应改变协议哈希或校验结果。
+const normalizeLines = text => text.replace(/\r\n/g, '\n');
+const game = normalizeLines(await readFile(resolve(backend, 'game-protocol/src/main/proto/game.proto'), 'utf8'));
+const leave = normalizeLines(await readFile(resolve(backend, 'game-protocol/src/main/proto/leave.proto'), 'utf8'));
+const commandsSource = normalizeLines(await readFile(resolve(backend, 'game-common/src/main/java/com/h/gamecommon/command/GameCommands.java'), 'utf8'));
 const root = protobuf.parse(game).root;
 protobuf.parse(leave, root);
 root.resolveAll();
@@ -34,7 +39,7 @@ const generated = {
 const target = resolve(project, 'src/protocol/schema.json');
 const text = `${JSON.stringify(generated, null, 2)}\n`;
 if (process.argv.includes('--check')) {
-  if (await readFile(target, 'utf8') !== text) throw new Error('客户端协议已落后，请运行 npm run protocol:sync');
+  if (normalizeLines(await readFile(target, 'utf8')) !== text) throw new Error('客户端协议已落后，请运行 npm run protocol:sync（使用自定义后端路径时也要传入相同的 --backend 参数）');
   console.log(`协议一致：${names.length} 个客户端消息，${Object.keys(commands).length} 个命令。`);
 } else {
   await mkdir(dirname(target), { recursive: true });

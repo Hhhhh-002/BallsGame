@@ -1,29 +1,29 @@
 # 球球 Web 客户端
 
-独立的 TypeScript + Vite + Canvas 客户端，对接 `D:\IdeaProjects\BallsGame` 的现有 Gateway 二进制 WebSocket 协议。不依赖 Java 项目参与前端启动或构建，不直接访问 Agent、Scene、Redis 或数据库。
+独立的 TypeScript + Vite + Canvas 客户端，对接本仓库 `backend/` 中的 Gateway 二进制 WebSocket 协议。不依赖 Java 项目参与前端启动或构建，不直接访问 Agent、Scene、Redis 或数据库。完整环境初始化步骤见[仓库首页](../README.md#快速开始)。
 
 ## 在 VS Code 运行
 
-打开目录 `D:\VSCodeProjects\BallsGame`，在终端执行：
+需要 Node.js 18+ / npm。在 VS Code 打开本仓库的 `frontend/` 目录，在终端执行：
 
 ```powershell
-npm install
+npm ci
 npm run dev
 ```
 
-浏览器打开 **http://127.0.0.1:5173**。本次已经安装依赖，直接执行 `npm run dev` 即可。
+浏览器打开 **http://127.0.0.1:5173**。后续依赖和锁文件未变时，直接执行 `npm run dev` 即可。若端口已被占用，可访问已有页面，或在原 Vite 终端按 Ctrl+C 停止后再启动。
 
-已提供 `.vscode/tasks.json` 和 `.vscode/launch.json`：先启动开发服务，再按 F5，选择“调试球球 Web 客户端”。生产构建执行 `npm run build`，本地查看构建产物执行 `npm run preview`。
+也可使用 VS Code 的浏览器调试配置连接开发服务。生产构建执行 `npm run build`，本地查看构建产物执行 `npm run preview`。
 
 当前项目兼容本机 Node.js 18.19.0；Vite 使用支持 Node 18 的 6.x 分支。[Vite 官方说明](https://vite.dev/blog/announcing-vite6)
 
 ## 连接后端
 
-网关地址在 **`public/client-config.js`** 中配置，目前设置为 **ws://10.21.85.37:9001/ws**：
+网关地址在 **`public/client-config.js`** 中配置。仓库当前文件保留作者的局域网地址，首次在本机启动时，必须先改成以下地址并保存：
 
 ```javascript
 window.BALLS_CLIENT_CONFIG = {
-  gatewayUrl: 'ws://10.21.85.37:9001/ws',
+  gatewayUrl: 'ws://127.0.0.1:9001/ws',
 };
 ```
 
@@ -86,15 +86,15 @@ REGISTER（1002）通过 Gateway 的 Feign 调用 Login 的 REGISTER_ACCOUNT（1
 
 ## 协议更新
 
-后端协议修改后，手动执行：
+后端协议修改后，在 `frontend/` 目录显式指定同仓库的 `../backend`，手动执行：
 
 ```powershell
-npm run protocol:sync
-npm run protocol:check
+npm run protocol:sync -- --backend ../backend
+npm run protocol:check -- --backend ../backend
 npm run build
 ```
 
-默认只读后端 `D:\IdeaProjects\BallsGame`，仅更新本客户端的 schema，不修改后端文件。后端移动位置时可指定：
+生成脚本默认读取当前客户端目录旁的 `../backend`，也可直接执行 `npm run protocol:sync` / `npm run protocol:check`。脚本忽略 LF / CRLF 换行差异，Windows 检出不会仅因换行变化误报协议落后。同步仅更新本客户端的 schema，不修改后端文件。后端放在其他位置时可指定：
 
 ```powershell
 npm run protocol:sync -- --backend "D:\其他目录\BallsGame"
@@ -104,7 +104,7 @@ npm run protocol:sync -- --backend "D:\其他目录\BallsGame"
 
 ## 服务端权威与主循环位置
 
-服务端主循环位于 `D:/IdeaProjects/BallsGame/scene-server/src/main/java/com/h/sceneserver/actor/SceneActor.java`：
+服务端主循环位于 [`backend/scene-server/src/main/java/com/h/sceneserver/actor/SceneActor.java`](../backend/scene-server/src/main/java/com/h/sceneserver/actor/SceneActor.java)：
 
 - `preStart/createReceive`：Akka 单次定时器每约 10ms 唤醒 Tick，只是检查时间，不代表逻辑 100Hz。
 - `advance`：单调时钟累计 elapsed，按 `1 / tickRate` 固定步长调用 `update`，默认 25Hz、每次最多补算 5 Tick，超过上限放弃超额积压，不伪增 tick。

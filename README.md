@@ -68,7 +68,7 @@
 
 > 除 Spring / Netty / Akka / Protobuf 等通用框架外，本项目从零自研了游戏协议栈、命令分发框架、服务间长连接、权威战斗循环与幂等投递等**全部游戏核心机制**。
 
-1. **分布式微服务游戏架构** —— Gateway / Login / AgentMgr / Agent / Scene 五大服务独立部署、按需水平扩展；Nacos 负责服务注册与配置中心（战斗规则热更新，改完即生效无需重启）；Redis 承担在线路由、请求去重、排行榜与分布式锁；MySQL 持久化账号与战绩。
+1. **分布式微服务游戏架构** —— Gateway / Login / AgentMgr / Agent / Scene 五大服务独立部署、按需水平扩展；Nacos 负责服务注册与配置中心（战斗规则发布后新建对局采用新值，已有对局保留原规则）；Redis 承担在线路由、请求去重、排行榜与分布式锁；MySQL 持久化账号与战绩。
 2. **自研二进制游戏协议栈** —— 不依赖 gRPC / JSON，自定义「信封 + 命令号 + Protobuf body」双层协议：客户端与服务间两套信封互不泄漏内部模型；Netty 编解码器、未知命令容错、带 requestId 的协议错误响应全部手写；64 位 ID 在客户端全程按 BigInt 处理，精度安全。
 3. **注解式命令分发框架** —— `@GameCommand` / `@ServiceCommand` / `@GatewayCommand` 注解 + 注册表扫描：启动期校验命令冲突，运行期 O(1) 查表分发，五大服务共用同一套分发底座，新增命令只需实现 Handler。
 4. **Netty 双向长连接复用** —— Gateway↔Agent、Agent↔Scene 按实例对复用单条双向 WebSocket：握手校验实例身份、广播按实例分组打包、心跳与断开由链路层统一处理——高频战斗指令不走 HTTP，复用长连接直发。
@@ -230,77 +230,206 @@ ServiceEnvelope { oneof: request | response | event }
 
 ## 快速开始
 
-### 1. 启动基础设施（MySQL / Redis / Nacos）
+以下以「MySQL / Redis / Nacos 运行在 Docker，五个 Java 服务和浏览器运行在同一台电脑」为例。应用暂未提供 Docker 镜像；不要把下面的 `127.0.0.1` 配置直接用于跨机器或应用容器部署。
+
+### 1. 准备环境并获取代码
+
+需要 Git、JDK 17、Maven（建议 3.9.x）、Node.js 18+ / npm，以及已启动的 Docker Engine / Docker Desktop（包含 Compose V2）。先确认 `java`、`mvn`、`node`、`npm`、`docker compose` 可在终端使用。
 
 ```bash
-docker compose up -d
-# MySQL   : localhost:3307  (database: ballsgame)
-# Redis   : localhost:6379
-# Nacos   : http://localhost:8848/nacos
+git clone https://github.com/Hhhhh-002/BallsGame.git
+cd BallsGame
 ```
 
-初始化数据库（账号表 + 战绩表，统一建表脚本）：
+除明确写了 `cd frontend` 的步骤外，下面命令均在仓库根目录 `BallsGame/` 执行，可用于 Bash 或 Windows PowerShell。
+
+### 2. 启动基础设施并建表
 
 ```bash
-mysql -h127.0.0.1 -P3307 -uroot -p ballsgame < backend/agent-server/src/main/resources/db/schema.sql
+docker compose -f backend/docker-compose.yml up -d
+docker compose -f backend/docker-compose.yml ps
 ```
 
-在 Nacos 中创建 `global-prod.yaml`（DEFAULT_GROUP），填入 MySQL / Redis 连接与 `battle.*` 战斗规则。战斗规则示例见 [`backend/config/nacos-global-battle.yaml`](backend/config/) 与 [`backend/config/README.md`](backend/config/README.md)。
+等待 MySQL / Redis 为 `healthy`，且 Nacos 控制台可以打开后继续。`up -d` 返回不代表所有服务已经就绪。
 
-> 生产环境请务必修改 docker-compose 中的默认口令，并对内部端口（Agent WS / Scene WS / 各服务 HTTP）做网络隔离。
+| 依赖 | 本机地址 | 本地开发配置 |
+| --- | --- | --- |
+| MySQL | `127.0.0.1:3307` | 数据库 `ballsgame`；账号 `ballsgame`、密码 `H002`；root 密码也是 `H002` |
+| Redis | `127.0.0.1:6379` | 密码 `H002`；数据库 `0` |
+| Nacos | `http://127.0.0.1:8848/nacos` | 客户端还需要能够连接 `9848` 端口；首次使用按控制台要求初始化管理员 |
 
-### 2. 编译并启动后端（Java 17+）
+统一建表脚本不会由应用自动执行。下面通过容器内的 MySQL 客户端执行，无需在电脑安装 MySQL 客户端，也不依赖 PowerShell 不支持的 `<` 输入重定向：
 
 ```bash
-cd backend
-mvn clean package -DskipTests
-
-# 启动顺序建议：Gateway → Login → AgentMgr → Agent → Scene
-java -jar gateway-server/target/gateway-server-*.jar
-java -jar login-server/target/login-server-*.jar
-java -jar agentmgr-server/target/agentmgr-server-*.jar
-java -jar agent-server/target/agent-server-*.jar
-java -jar scene-server/target/scene-server-*.jar
+docker cp backend/agent-server/src/main/resources/db/schema.sql ballsgame-mysql:/tmp/ballsgame-schema.sql
+docker exec -it ballsgame-mysql mysql --default-character-set=utf8mb4 -uroot -p ballsgame
 ```
 
-各服务从 Nacos 读取配置并注册；Gateway 默认以二进制 WebSocket 对外提供 `/ws` 接入（端口以 Nacos 配置为准，示例为 `9001`）。
+输入 root 密码，在出现的 `mysql>` 提示符中执行：
 
-### 3. 启动 Web 客户端
+```sql
+SOURCE /tmp/ballsgame-schema.sql;
+SHOW TABLES;
+exit;
+```
+
+确认存在 `game_account`、`game_match`、`game_match_result` 三张表。脚本不迁移已有旧表结构；此前运行过旧版本时，需先核对实际表结构。
+
+### 3. 配置 Nacos（启动 Java 服务前必须完成）
+
+五个服务默认使用同一命名空间 ID：`eb7842a8-9b4e-4add-8516-83d7f1d01ee1`。在控制台创建此 ID 的命名空间，再切换进去创建配置：
+
+- Data ID：`global-prod.yaml`
+- Group：`DEFAULT_GROUP`
+- 格式：`YAML`
+
+**不要只在默认的 public 命名空间创建配置**，否则默认设置下的服务读不到它。也可以使用其他命名空间，但必须为五个 Java 服务统一设置 `NACOS_NAMESPACE`，值填实际命名空间 ID，而不是显示名称。
+
+把下面的本地开发配置粘贴到 `global-prod.yaml` 并发布：
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3307/ballsgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: ballsgame
+    password: "H002"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: "H002"
+      database: 0
+      timeout: 3s
+
+netty:
+  gateway:
+    websocket:
+      port: 9001
+      path: /ws
+
+battle:
+  min-players-to-start: 2 # 至少两名玩家进入同一局才开赛。
+  max-players: 32 # 每局同时在场人数上限，包括观战玩家。
+  initial-foods: 50 # 创建场景时随机生成的食物数。
+  max-foods: 50 # 场上食物上限，包含玩家吐球。
+  food-interval-ms: 10000 # 开赛后每10秒模拟时间刷新一批。
+  food-refresh-max-count: 5 # 每批随机1~5个，不超过剩余容量。
+  width: 100 # 地图宽度，游戏坐标单位。
+  height: 100 # 地图高度，游戏坐标单位。
+  match-duration-seconds: 600 # 每局10分钟，从达到开赛人数开始计时。
+  tick-rate: 25 # 战斗逻辑25Hz。
+  broadcast-rate: 5 # 位置广播5Hz。
+```
+
+完整战斗参数、默认值与范围见 [`backend/scene-server/config/nacos-global-battle.yaml`](backend/scene-server/config/nacos-global-battle.yaml)。未填写的战斗参数使用代码默认值；不要把示例中的第二个 `battle:` 根节点直接追加到已有 `battle:` 后面，应合并字段。
+
+服务默认连接 `127.0.0.1:8848`，Nacos 用户名 / 密码默认均为 `nacos`。如果管理员凭据或地址不同，**每个启动 Java 服务的终端**都要设置对应环境变量；IDE 启动则填入各自运行配置。例如 PowerShell：
+
+```powershell
+$env:NACOS_SERVER_ADDR = '127.0.0.1:8848'
+$env:NACOS_NAMESPACE = 'eb7842a8-9b4e-4add-8516-83d7f1d01ee1'
+$env:NACOS_USERNAME = '你的Nacos账号'
+$env:NACOS_PASSWORD = '你的Nacos密码'
+```
+
+默认环境为 `prod`，Login、AgentMgr、Scene 的专属配置可不创建。不要在全局配置里统一设置 `spring.application.name` 或 `server.port`，否则会覆盖不同服务的身份或 HTTP 端口。更多说明见 [`backend/config/README.md`](backend/config/README.md)。
+
+> 战斗规则更新发布后，新创建的对局读取新值；已经创建的对局（包括等待室）保留原规则。MySQL / Redis 连接配置变更需要重启使用该连接的服务；`ranking-retention-days` 也在 Scene 重启后应用。配置热更新不代表所有现有对象都会立即切换。
+>
+> 上述口令仅用于本地开发。生产环境必须更换默认口令和 Nacos 身份校验 / Token 配置，并限制数据库、Redis、Nacos 和内部 RPC / WebSocket 端口的访问。
+
+### 4. 编译并启动五个后端服务
+
+在仓库根目录编译全部模块：
 
 ```bash
-cd frontend
-npm install
-npm run dev
+mvn -f backend/pom.xml clean package -DskipTests
 ```
 
-浏览器打开 `http://127.0.0.1:5173`，即可注册账号并开始对局。网关地址在 `frontend/public/client-config.js` 中配置：
+编译成功后，**分别打开五个终端，均进入仓库根目录，每个终端只执行下面的一条 Java 命令**。建议依次启动 Scene → Agent → AgentMgr → Login → Gateway，等待各自启动成功后再继续；不要把五条命令直接粘贴到同一前台终端等待自动执行。
+
+```bash
+# 终端1：Scene
+java -jar backend/scene-server/target/scene-server-0.0.1-SNAPSHOT.jar
+```
+
+```bash
+# 终端2：Agent
+java -jar backend/agent-server/target/agent-server-0.0.1-SNAPSHOT.jar
+```
+
+```bash
+# 终端3：AgentMgr
+java -jar backend/agentmgr-server/target/agentmgr-server-0.0.1-SNAPSHOT.jar
+```
+
+```bash
+# 终端4：Login
+java -jar backend/login-server/target/login-server-0.0.1-SNAPSHOT.jar
+```
+
+```bash
+# 终端5：Gateway
+java -jar backend/gateway-server/target/gateway-server-0.0.1-SNAPSHOT.jar
+```
+
+JAR 文件名对应当前 POM 版本；以后改版本号时，请使用 `target/` 中实际生成的文件名，不要选择 `.jar.original`。当前链路不需要启动 `nodemgr-server`。
+
+| 服务 | 默认 HTTP 端口 | 默认 WebSocket 端口 / 路径 |
+| --- | --- | --- |
+| Gateway | `8080` | `9001/ws`，浏览器入口 |
+| Login | `8081` | — |
+| AgentMgr | `8082` | — |
+| Agent | `8083` | `9101/internal/agent`，内部通信 |
+| Scene | `8084` | `9201/internal/scene`，内部通信 |
+
+确认 Nacos 的同一命名空间、`DEFAULT_GROUP` 中出现这五个服务，且日志没有配置读取、数据库连接或端口占用错误，再启动客户端。端口以最终配置为准，浏览器应连接 `9001`，不是 `8080`。
+
+### 5. 启动 Web 客户端并验证多人对局
+
+先把 [`frontend/public/client-config.js`](frontend/public/client-config.js) 中现有的局域网地址改成本机网关地址并保存：
 
 ```javascript
 window.BALLS_CLIENT_CONFIG = { gatewayUrl: 'ws://127.0.0.1:9001/ws' };
 ```
 
-## 测试
+该配置文件非空时优先于浏览器保存地址和环境变量，不能只改 `.env`。修改后刷新页面即可；有旧缓存时按 Ctrl+F5。
 
-后端（真实 Akka、MyBatis-Plus/H2、离线 Redis 替身；覆盖 Actor 生命周期、指令分发、请求去重、结算与路由校验）：
-
-```bash
-cd backend
-mvn -pl gateway-server,login-server,agentmgr-server,agent-server,scene-server -am clean test
-```
-
-可选的「真实基础设施」检查（需要 Nacos / MySQL / Redis 就绪，只读校验、不写业务数据）：
-
-```bash
-mvn -pl gateway-server,login-server,agentmgr-server,agent-server,scene-server -am clean test -Dballs.infrastructure-test=true
-```
-
-前端（离线回归：原包重试、临时错误、迟到响应、跨连接隔离、离场恢复、插值与权威状态分离）：
+另开终端，从仓库根目录执行：
 
 ```bash
 cd frontend
-npm test              # Node test runner 离线回归
-npm run protocol:check   # 校验前端 schema 与后端 proto 一致性
-npm run build         # 类型检查 + 生产构建
+npm ci
+npm run dev
+```
+
+浏览器打开 `http://127.0.0.1:5173`。首次使用先注册、再登录，不会自动生成演示账号。要验证多人对战，打开两个浏览器窗口，分别登录**两个不同邮箱账号**，开始比赛后确认进入同一局：第一人显示等待，达到默认两人后才开始计时和战斗。同一账号登录两次会踢掉旧连接，不能用来模拟两名玩家。本机验证建议只启动一个 Scene 实例，避免被分配到不同实例的房间。
+
+若 `5173` 已被占用，先访问已有页面，或在原来的 Vite 终端按 Ctrl+C 后重新启动，不要反复开多个开发服务。手机或其他电脑访问时，网关地址不能写 `127.0.0.1`；还需开放 Vite 的局域网监听、放行对应端口，HTTPS 页面则需要可用的 `wss://` 网关。
+
+## 测试
+
+后端（真实 Akka、MyBatis-Plus/H2、离线 Redis 替身；覆盖 Actor 生命周期、指令分发、请求去重、结算与路由校验）。在仓库根目录执行：
+
+```bash
+mvn -f backend/pom.xml -pl gateway-server,login-server,agentmgr-server,agent-server,scene-server -am clean test
+```
+
+可选的「真实基础设施」检查（先按上述步骤配置 Nacos 并建表，只读校验、不写业务数据）。测试会启动 Netty 监听，请先停止正在运行的五个 Java 服务以免内部端口冲突，保留基础设施运行。在仓库根目录执行：
+
+```bash
+mvn -f backend/pom.xml -pl gateway-server,login-server,agentmgr-server,agent-server,scene-server -am clean test '-Dballs.infrastructure-test=true'
+```
+
+前端（离线回归：原包重试、临时错误、迟到响应、跨连接隔离、离场恢复、插值与权威状态分离）。另开终端，从仓库根目录进入 `frontend/`，安装依赖后执行：
+
+```bash
+cd frontend
+npm ci
+npm test # Node test runner 离线回归
+npm run protocol:check -- --backend ../backend # 显式指定仓库内后端，避免依赖作者本机路径
+npm run build # 类型检查 + 生产构建
 ```
 
 ## 仓库结构

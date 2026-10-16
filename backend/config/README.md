@@ -1,7 +1,9 @@
 # Nacos 连接配置与启动检查
 
 Gateway、Login、AgentMgr、Agent、Scene 的本地配置统一使用 application.yaml，默认环境为 prod。
-五个服务都必须导入现有命名空间内 DEFAULT_GROUP 的 global-prod.yaml；Login、AgentMgr、Scene 的专属配置是可选的，不需要为了启动再创建它们。
+五个服务都必须导入同一命名空间内 DEFAULT_GROUP 的 global-prod.yaml；Login、AgentMgr、Scene 的专属配置是可选的，不需要为了启动再创建它们。
+默认命名空间 ID 为 `eb7842a8-9b4e-4add-8516-83d7f1d01ee1`，新 Nacos 需要先创建它；或者为所有服务统一设置 `NACOS_NAMESPACE` 为实际命名空间 ID。只把配置放在 public 中无法供默认设置下的服务读取。
+首次部署的完整配置、建表及逐服务启动步骤见[仓库首页](../../README.md#快速开始)。战斗参数示例位于[场景配置目录](../scene-server/config/nacos-global-battle.yaml)。
 
 全局配置按下面的标准 Spring 属性填写，不需要新建手动读取配置的类：
 
@@ -19,16 +21,16 @@ Nacos 启动地址可使用 NACOS_SERVER_ADDR（兼容 NACOS_ADDRESS），命名
 如果显式切换 SPRING_PROFILES_ACTIVE，需要在 Nacos 提供对应的 global-<环境>.yaml。
 不要在全局配置中设置所有服务共用的 spring.application.name 或 server.port。
 
-在仓库根目录执行普通测试：
+在仓库根目录 `BallsGame/`（包含 `backend/` 和 `frontend/`）执行普通测试：
 
 ```powershell
-mvn -pl gateway-server,login-server,agentmgr-server,agent-server,scene-server -am clean test
+mvn -f backend/pom.xml -pl gateway-server,login-server,agentmgr-server,agent-server,scene-server -am clean test
 ```
 
-开启真实环境检查（需要实际 Nacos、MySQL、Redis 和上述表）：
+开启真实环境检查（需要实际 Nacos、MySQL、Redis 和上述表；先停止正在运行的 Java 服务，避免测试监听相同 Netty 端口）：
 
 ```powershell
-mvn -pl gateway-server,login-server,agentmgr-server,agent-server,scene-server -am clean test '-Dballs.infrastructure-test=true'
+mvn -f backend/pom.xml -pl gateway-server,login-server,agentmgr-server,agent-server,scene-server -am clean test '-Dballs.infrastructure-test=true'
 ```
 
 真实环境测试会启动各服务的 HTTP/Netty、确认 Nacos 配置源、执行 MySQL SELECT 1 / 表列检查和 Redis PING。
