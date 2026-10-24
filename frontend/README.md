@@ -19,7 +19,7 @@ npm run dev
 
 ## 连接后端
 
-网关地址在 **`public/client-config.js`** 中配置。仓库当前文件保留作者的局域网地址，首次在本机启动时，必须先改成以下地址并保存：
+网关地址在 **`public/client-config.js`** 中配置，默认连接本机网关。首次启动时，确认地址与实际部署一致：
 
 ```javascript
 window.BALLS_CLIENT_CONFIG = {

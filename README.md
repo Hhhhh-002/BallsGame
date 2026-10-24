@@ -1,5 +1,7 @@
 # BallsGame · 多人实时在线球球吞噬竞技游戏
 
+> 本项目是本人在学习过程中从零独立开发的多人实时在线游戏，主要聚焦 Java 游戏服务端架构与核心游戏逻辑的设计和实现。Web 客户端在 AI 辅助下开发，用于联调与玩法展示。项目仍有不少不足，后续将持续完善功能、优化性能，并改进工程质量。欢迎交流与指正。
+
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-brightgreen?logo=springboot&logoColor=white)
 ![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2025.1-6DB33F?logo=spring&logoColor=white)
@@ -19,6 +21,7 @@
 
 ## 目录
 
+- [实机演示](#实机演示)
 - [游戏功能](#游戏功能)
 - [技术亮点](#技术亮点)
 - [技术栈](#技术栈)
@@ -31,6 +34,14 @@
 - [已知边界](#已知边界)
 
 ---
+
+## 实机演示
+
+[![BallsGame 实机演示封面](docs/media/gameplay-cover.jpg)](docs/demo.md)
+
+[打开视频展示页](docs/demo.md) · [直接播放或下载 MP4](https://github.com/Hhhhh-002/BallsGame/raw/refs/heads/main/docs/media/gameplay.mp4)
+
+视频为当前项目的实机录制，不是效果预渲染。仓库提供压缩展示版，原始录像保留在本地。
 
 ## 游戏功能
 
@@ -388,7 +399,7 @@ JAR 文件名对应当前 POM 版本；以后改版本号时，请使用 `target
 
 ### 5. 启动 Web 客户端并验证多人对局
 
-先把 [`frontend/public/client-config.js`](frontend/public/client-config.js) 中现有的局域网地址改成本机网关地址并保存：
+先确认 [`frontend/public/client-config.js`](frontend/public/client-config.js) 中的地址与网关部署位置一致，默认连接本机：
 
 ```javascript
 window.BALLS_CLIENT_CONFIG = { gatewayUrl: 'ws://127.0.0.1:9001/ws' };
