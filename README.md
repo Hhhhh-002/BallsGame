@@ -37,11 +37,11 @@
 
 ## 实机演示
 
-[![BallsGame 实机演示封面](docs/media/gameplay-cover.jpg)](docs/demo.md)
+[![点击前往 B 站观看 BallsGame 实机演示](docs/media/gameplay-cover.jpg)](https://www.bilibili.com/video/BV1QqHM6vEk5/)
 
-[打开视频展示页](docs/demo.md) · [直接播放或下载 MP4](https://github.com/Hhhhh-002/BallsGame/raw/refs/heads/main/docs/media/gameplay.mp4)
+[在 B 站观看实机演示](https://www.bilibili.com/video/BV1QqHM6vEk5/) · [视频展示说明](docs/demo.md)
 
-视频为当前项目的实机录制，不是效果预渲染。仓库提供压缩展示版，原始录像保留在本地。
+点击封面即可前往 B 站观看。视频为当前项目的实机录制，不是效果预渲染；GitHub README 不内嵌 B 站播放器。
 
 ## 游戏功能
 

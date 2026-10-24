@@ -4,11 +4,13 @@
 
 本视频为项目实机录制，展示当前游戏的实际运行情况。
 
-[![播放 BallsGame 实机演示](media/gameplay-cover.jpg)](https://github.com/Hhhhh-002/BallsGame/blob/main/docs/media/gameplay.mp4)
+[![点击前往 B 站观看 BallsGame 实机演示](media/gameplay-cover.jpg)](https://www.bilibili.com/video/BV1QqHM6vEk5/)
 
-[在 GitHub 打开视频](https://github.com/Hhhhh-002/BallsGame/blob/main/docs/media/gameplay.mp4) · [下载演示视频（MP4）](https://github.com/Hhhhh-002/BallsGame/raw/refs/heads/main/docs/media/gameplay.mp4)
+[在 B 站观看实机演示](https://www.bilibili.com/video/BV1QqHM6vEk5/)
 
-如果浏览器未直接播放，可下载后使用本地播放器观看。
+点击封面或上方链接，前往 B 站视频页面播放。GitHub README 不支持内嵌 B 站播放器。
+
+备用：[下载仓库中的压缩演示视频（MP4）](https://github.com/Hhhhh-002/BallsGame/raw/refs/heads/main/docs/media/gameplay.mp4)。
 
 ## 项目说明
 
